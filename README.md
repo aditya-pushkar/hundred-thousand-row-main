@@ -3,7 +3,7 @@
 First, clone and build the project:
 ```bash
 1. git clone
-2. cd hundred-thousand-row
+2. cd hundred-thousand-row-main
 2. npm run build
 3. npm run start
 ```
@@ -11,37 +11,42 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 
 ## Overview
-Our goal is to render 100,000 rows with their respective squares in Next.js, while managing slow API response times and ensuring minimal lag on the frontend.
+Our goal is to render 100,000 rows with their respective squares in each row, while managing slow API response times and ensuring minimal lag on the frontend.
 
 ### Problems Faced
 React is very bad at rendering large lists, tabular data, and grids efficiently. This can lead to a laggy and unusable user interface. 
 
-To address these issues, I implemented virtualization, pagination, and batched API requests for fetching the square of integers.
+To address these issues, I implemented `Virtualization`, and fetching the square of integers in parallel.
 
+#### Key Features:
+- **Fetch and Display Squares**: The squares of integers are fetched from an API and displayed in a table.
+- **Batched Loading**: Integers are loaded in batches of 25 at a time, starting from 1 up to 100,000.
+- **Parallel Fetching**: Square of the integers is fetched in parallel
+- **Infinite Scrolling**: More integers and their squares are fetched when the user scrolls to the end of the table.
 
-### Backend
-We have two API routes. `/api/integer` and `/api/square`
+#### Main Components:
+1. **`sqrs` State**: Stores integers and their corresponding squares as an object.
+   - Example: `{ 1: { sqr: 1 }, 2: { sqr: 4 }, ... }`
 
-1. To simplify the project, I'm simulating the database query with pagination in the `/api/integer?page=` API. This API takes a page number as a query parameter and returns a set of 500 integers. With a total of 100,000 integers, there are 200 pages in total (100,000 / 500 = 200).
+2. **`useEffect`**: Initially loads the first sets of squares (integers 1-25).
 
+3. **`fetchAndUpdateSquares(from)`**: Fetches squares for a given range of integers from the API and updates the `sqrs` state.
+   - **Steps**:
+     1. Initialize placeholders for the squares (`null` values).
+     2. Fetch squares from the `/api/square` endpoint.
+     3. Update the state with the fetched squares.
 
-2. The `/api/square` API takes an array of integers and returns the array of squares with their respective integers with a delay of 2 sec per request. For example👇
+4. **`fetchMoreRows(e)`**: Fetches the next sets of squares when the user scrolls to the end of the table.
 
-```js
-[{2:4}, {3:9}, {4:16}, {5:25}]
+#### Virtualized Table:
+- **`TableVirtuoso`**: Renders the list of integers and their squares, optimizing for performance by only rendering rows visible in the viewport.
+- **Scrolling**: Automatically loads more rows when the user reaches the end.
+
+#### Example API Call:
+The API request is a `POST` request to `/api/square` with the integer as the payload, which returns the square of that integer.
+
+```json
+{
+  "integer": 1
+}
 ```
-
-### Frontend End
-To render large tabular data efficiently, we need to implement **Virtualization**. For this, I used the external library `react-virtuoso`. 
-
-Here's an overview of how the data is rendered on the frontend:
-
-1. We request a new set of integers from `/api/integer`.
-2. The array of integers is sent to `/api/square` and we receive the squares with their respective integers.
-3. The squares are stored in a `useState` array, and the UI is then rendered.
-4. When the user scrolls to the bottom of the table, we automatically request new sets of squares with their respective integers. This process continues until we reach the last integer.
-
-
-#### Scope of Improvement
-1. Instead of using `Promise.all()`, we could use a simple for loop. While this might increase latency, it would be much easier to understand.
-2. We can built a custom virtualization component instead of using an external library.

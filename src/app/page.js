@@ -1,80 +1,66 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback} from "react";
-import { TableVirtuoso } from "react-virtuoso";
+import { useState, useEffect} from 'react';
+import { TableVirtuoso } from 'react-virtuoso';
 
-const TOTAL_INTEGERS = 100_00;
-const INTEGERS_PER_BATCH = 20;
+const TOTAL_INTEGERS = 100_000; // Adjust as needed
+const INTEGERS_PER_BATCH = 25;
 
 export default function Home() {
   const [sqrs, setSqrs] = useState({});
-  const batchRendered = useRef(0)
 
-  useEffect(() => {
-    //get squares of int from 1-15
-    addNewRow(0)
-  }, []);
+    useEffect(() => {
+        fetchAndUpdateSquares(1); // Start from 1 instead of 0
+    }, []);
 
-//   console.log(sqrs);
+  const fetchAndUpdateSquares = async(from) => {
+    console.log("Fetching and updating squares from", from, (from+INTEGERS_PER_BATCH)-1);
 
-useEffect(()=>{
-    if(Object.keys(sqrs).length>0){
-        console.log("HHTTYY", Object.keys(sqrs).length)
-        fetchSqr(0)
-    }
-},[sqrs])
-
-
-  const addNewRow = async(from) =>{
-    console.log("FETCING ROW")
-    //get squares of int from 1-20 
+    // Initialize new squares with null values
     const newSqrs = {};
-    for (let int = from; int < INTEGERS_PER_BATCH; int++) {
-      newSqrs[int] = {sqr: null}
+    for (let int = from; int < from + INTEGERS_PER_BATCH && int <= TOTAL_INTEGERS; int++) {
+      newSqrs[int] = { sqr: null };
     }
-    setSqrs(newSqrs);
 
- }
+    // Update state with new null-valued squares
+    setSqrs(prev => ({ ...prev, ...newSqrs }));
 
-const fetchSqr = async (from) => {
-    const promises = [];
-    for (let i = from; i < from + INTEGERS_PER_BATCH; i++) {
-      if (sqrs[i]?.sqr === null) {
-        promises.push(
-          fetch('/api/square', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ integer: i }),
-          }).then(res => res.json())
-        );
-      }
-    }
-  
+    const promises = Object.keys(newSqrs).map(i => 
+      fetch('/api/square', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ integer: parseInt(i) }),
+      }).then(res => res.json())
+    );
+
     try {
       const results = await Promise.all(promises);
-      setSqrs(prev => {
-        const newSquares = { ...prev };
-        results.forEach((result, index) => {
-          newSquares[from + index].sqr = result.sqr;
-        });
-        return newSquares;
-      });
       
-      /**
-       * It helps to track the how much batch is renders
-       * ex in firt render it will be 20 then 40 then 60
-       * total render hoga TOTAL_INTEGER/INTEGERS_PER_BATCH ex 100/20 = 5 render inn
-       */
-      batchRendered.current = batchRendered.current + INTEGERS_PER_BATCH
+      setSqrs(prev => {
+        const updatedSquares = { ...prev };
+        results.forEach((result, index) => {
+          const key = from + index;
+          updatedSquares[key] = { sqr: result.sqr };
+        });
+        return updatedSquares;
+      });
+
+      console.log(`Batch from ${from} to ${from + INTEGERS_PER_BATCH - 1} has been updated`);
     } catch (error) {
       console.error('Error updating squares:', error);
     }
   }
 
+  // Function to fetch more squares as user scrolls
+  const fetchMoreRows = (e) => {
+    const nextBatch = Object.keys(sqrs).length + 1;
+    if (nextBatch <= TOTAL_INTEGERS) {
+      fetchAndUpdateSquares(nextBatch);
+    }
+  };
 
-  console.log("sqr0", sqrs)
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -83,23 +69,19 @@ const fetchSqr = async (from) => {
           className="w-full"
           data={Object.entries(sqrs)}
           useWindowScroll
-          totalCount={TOTAL_INTEGERS} // Set the total number of rows
-          endReached={(e)=>fetchSqr(e)}
+          endReached={(e)=>fetchMoreRows(e)}
           fixedHeaderContent={() => (
             <tr className="bg-gray-900 px-24">
-              <th className="text-left py-3 px-6 font-semibold text-white-200 w-full">
-                Integer
-              </th>
-              <th className="text-left py-3 px-6 font-semibold text-white-200 w-full">
-                Square
-              </th>
+              <th className="text-left py-3 px-6 font-semibold text-white-200 w-full">Integer</th>
+              <th className="text-left py-3 px-6 font-semibold text-white-200 w-full">Square</th>
             </tr>
           )}
-          itemContent={(index, [key, value])=>(
+          itemContent={(index, [key, value]) => (
             <>
-            {/* Dont want 0 */}
-              <td className="py-2 px-6 border-b border-gray-800">{index}</td>
-              <td className="py-2 px-6 border-b border-gray-800">{value.sqr?value.sqr:"Loading..."}</td>
+              <td className="py-2 px-6 border-b border-gray-800">{key}</td>
+              <td className="py-2 px-6 border-b border-gray-800">
+                {value.sqr !== null ? value.sqr : "Loading..."}
+              </td>
             </>
           )}
         />
