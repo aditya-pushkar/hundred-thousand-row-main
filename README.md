@@ -21,7 +21,7 @@ To address these issues, I implemented `Virtualization`, and fetching the square
 #### Key Features:
 - **Fetch and Display Squares**: The squares of integers are fetched from an API and displayed in a table.
 - **Batched Loading**: Integers are loaded in batches of 25 at a time, starting from 1 up to 100,000.
-- **Parallel Fetching**: Square of the integers is fetched in parallel
+- **Parallel Fetching**:  The square of the integers is fetched in parallel.
 - **Infinite Scrolling**: More integers and their squares are fetched when the user scrolls to the end of the table.
 
 #### Main Components:
